@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>实时处理音频输入</title>
+    </head>
+    <body>
+        <h1>实时处理音频输入示例</h1>
+        <button id="startButton">开始捕获音频</button>
+        <button id="stopButton" disabled>停止捕获音频</button>
+        <script>
+            let audioContext;
+            let mediaStreamSource;
+            let audioStream;
+            let pcmProcessorNode;
+
+            document.getElementById("startButton").addEventListener("click", async () => {
+                // 创建 AudioContext
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                //   const blob = new Blob([processCode], {
+                //     type: "application/javascript",
+                //   });
+
+                // 创建一个临时的 URL 以便下载
+                //   const url = URL.createObjectURL(blob);
+                // 获取麦克风输入
+
+                try {
+                    // 加载 AudioWorkletProcessor
+                    setTimeout(() => {
+                        audioContext.audioWorklet
+                            .addModule("https://ytest6.gank.75cos.com/pcm-processor.js")
+                            .then(() => {
+                                console.log("success");
+                                start();
+                            })
+                            .catch((err) => {
+                                console.log("err");
+                            });
+                    }, 100);
+                    return;
+                } catch (error) {
+                    console.error("Error accessing microphone:", error);
+                }
+            });
+
+            document.getElementById("stopButton").addEventListener("click", () => {
+                // 停止音频流
+                if (audioStream) {
+                    const tracks = audioStream.getTracks();
+                    tracks.forEach((track) => track.stop());
+                }
+
+                // 关闭 AudioContext
+                if (audioContext) {
+                    audioContext.close();
+                }
+
+                // 更新按钮状态
+                document.getElementById("startButton").disabled = false;
+                document.getElementById("stopButton").disabled = true;
+            });
+
+            async function start() {
+                console.log("add module ok");
+
+                audioStream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                });
+
+                console.log('get audio stream====');
+                // 创建媒体流源节点
+                mediaStreamSource = audioContext.createMediaStreamSource(audioStream);
+                console.log('get media stream source');
+                // 创建 PCM 处理器节点
+                pcmProcessorNode = new AudioWorkletNode(audioContext, "pcm-processor");
+                console.log('create pcm processor node');
+                 // 监听处理器发回的消息
+                 pcmProcessorNode.port.onmessage = (event) => {
+                    console.log('Received message from PCMProcessor:', event.data);
+                };
+
+                // 连接节点：mediaStreamSource -> pcmProcessorNode -> destination
+                mediaStreamSource.connect(pcmProcessorNode).connect(audioContext.destination);
+                console.log('connnect');
+                // 更新按钮状态
+                document.getElementById("startButton").disabled = true;
+                document.getElementById("stopButton").disabled = false;
+            }
+        </script>
+    </body>
+</html>
